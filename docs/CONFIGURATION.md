@@ -138,6 +138,18 @@ each setting.
 
 ### General Settings
 
+#### `privileged_helper_prompt_skipped_version`
+
+**Type:** String
+**Default:** `""`
+**Internal:** Yes
+
+Records the ClamUI version for which the user chose **Not Now** when offered installation of the Flatpak privileged helper at startup. If this value exactly matches the running ClamUI version, that automatic startup prompt is suppressed for that version only. A newer ClamUI version may prompt again for its matching helper.
+
+This setting remembers only the prompt dismissal; it does not cache or disable helper-status probing. ClamUI continues to check the installed helper dynamically, and an installed helper clears a remembered dismissal. **Preferences > Save** always continues to show the current helper status and, where supported, its installation action.
+
+---
+
 #### `language`
 
 **Type:** String

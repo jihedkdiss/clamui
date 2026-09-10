@@ -24,7 +24,13 @@ from ...core.clamav_config import (
 )
 from ...core.flatpak import is_flatpak
 from ...core.i18n import _
+from ...core.privileged_helper import (
+    PrivilegedHelperState,
+    PrivilegedHelperStatus,
+    get_privileged_helper_status,
+)
 from ..compat import create_toolbar_view, safe_set_subtitle_lines, safe_set_title_lines
+from ..privileged_helper_dialog import present_privileged_helper_dialog
 from ..utils import resolve_icon_name
 from .base import PreferencesPageMixin
 from .database_page import DatabasePage
@@ -106,6 +112,13 @@ class SavePage(PreferencesPageMixin):
         # Track saving state
         self._is_saving = False
         self._scheduler_error = None
+
+        # Store references for the Flatpak privileged-helper status row.
+        self._privileged_helper_row = None
+        self._privileged_helper_icon = None
+        self._privileged_helper_button = None
+        self._privileged_helper_status: PrivilegedHelperStatus | None = None
+        self._privileged_helper_status_thread = None
 
         # Store reference to save button
         self._save_button = None
@@ -215,9 +228,13 @@ class SavePage(PreferencesPageMixin):
         auto_save_row.add_prefix(auto_save_icon)
         info_group.add(auto_save_row)
 
+        if is_flatpak():
+            self._create_privileged_helper_row(info_group)
+            self._refresh_privileged_helper_status()
+
         # System configuration writes from Flatpak always require the matching
-        # host helper; checking whether it exists is deferred to the background
-        # save operation so page creation never blocks the GTK thread.
+        # host helper. Its display status is checked asynchronously above; the
+        # save path remains responsible for failing closed if it is unavailable.
         from ...core.privileged_paths import is_running_as_root
 
         manual_save_row = Adw.ActionRow()
@@ -280,6 +297,111 @@ class SavePage(PreferencesPageMixin):
         page.add(button_group)
 
         return page
+
+    def _create_privileged_helper_row(self, group: Adw.PreferencesGroup) -> None:
+        """Add the Flatpak host-helper status and installation controls."""
+        self._privileged_helper_row = Adw.ActionRow()
+        self._privileged_helper_row.set_title(_("Privileged Helper"))
+        self._privileged_helper_row.set_subtitle(
+            _("Checking whether the matching host helper is installed…")
+        )
+        safe_set_subtitle_lines(self._privileged_helper_row, 2)
+
+        self._privileged_helper_icon = Gtk.Image.new_from_icon_name(
+            resolve_icon_name("emblem-synchronizing-symbolic")
+        )
+        self._privileged_helper_icon.add_css_class("dim-label")
+        self._privileged_helper_row.add_prefix(self._privileged_helper_icon)
+
+        self._privileged_helper_button = Gtk.Button()
+        self._privileged_helper_button.set_label(_("Install Helper"))
+        self._privileged_helper_button.set_valign(Gtk.Align.CENTER)
+        self._privileged_helper_button.set_sensitive(False)
+        self._privileged_helper_button.connect(
+            "clicked", self._on_install_privileged_helper_clicked
+        )
+        self._privileged_helper_row.add_suffix(self._privileged_helper_button)
+        group.add(self._privileged_helper_row)
+
+    def _refresh_privileged_helper_status(self) -> None:
+        """Probe helper availability without blocking the GTK main thread."""
+        status_thread = threading.Thread(target=self._probe_privileged_helper_status)
+        status_thread.daemon = True
+        self._privileged_helper_status_thread = status_thread
+        status_thread.start()
+
+    def _probe_privileged_helper_status(self) -> None:
+        """Fetch the host-helper status, then hand rendering to GTK's main loop."""
+        status = get_privileged_helper_status()
+        GLib.idle_add(self._render_privileged_helper_status, status)
+
+    def _render_privileged_helper_status(self, status: PrivilegedHelperStatus) -> None:
+        """Render a helper status on the GTK main thread."""
+        if (
+            self._privileged_helper_row is None
+            or self._privileged_helper_icon is None
+            or self._privileged_helper_button is None
+        ):
+            return
+
+        self._privileged_helper_status = status
+        self._privileged_helper_icon.remove_css_class("success")
+        self._privileged_helper_icon.remove_css_class("warning")
+        self._privileged_helper_icon.remove_css_class("dim-label")
+
+        if status.state is PrivilegedHelperState.INSTALLED:
+            self._privileged_helper_row.set_subtitle(
+                _("Installed: {package} {version}.").format(
+                    package=status.package_name, version=status.version
+                )
+            )
+            self._privileged_helper_icon.set_from_icon_name(
+                resolve_icon_name("emblem-default-symbolic")
+            )
+            self._privileged_helper_icon.add_css_class("success")
+            self._privileged_helper_button.set_visible(False)
+            self._privileged_helper_button.set_sensitive(False)
+            return
+
+        if status.state is PrivilegedHelperState.INSTALLABLE:
+            self._privileged_helper_row.set_subtitle(
+                status.detail or _("A matching host privileged helper can be installed.")
+            )
+            self._privileged_helper_icon.set_from_icon_name(
+                resolve_icon_name("dialog-warning-symbolic")
+            )
+            self._privileged_helper_icon.add_css_class("warning")
+            self._privileged_helper_button.set_visible(True)
+            self._privileged_helper_button.set_sensitive(True)
+            return
+
+        if status.state is PrivilegedHelperState.UNSUPPORTED:
+            self._privileged_helper_row.set_subtitle(
+                status.detail or _("Automatic installation is unavailable on this host.")
+            )
+        else:
+            self._privileged_helper_row.set_subtitle(
+                status.detail or _("No host privileged helper is required.")
+            )
+        self._privileged_helper_icon.set_from_icon_name(
+            resolve_icon_name("dialog-information-symbolic")
+        )
+        self._privileged_helper_icon.add_css_class("dim-label")
+        self._privileged_helper_button.set_visible(False)
+        self._privileged_helper_button.set_sensitive(False)
+
+    def _on_install_privileged_helper_clicked(self, _button: Gtk.Button) -> None:
+        """Present the helper installer after the asynchronous status check."""
+        if not self._privileged_helper_status or not self._privileged_helper_status.can_install:
+            return
+
+        present_privileged_helper_dialog(
+            self._window, on_installed=self._on_privileged_helper_installed
+        )
+
+    def _on_privileged_helper_installed(self) -> None:
+        """Refresh the status after the installer succeeds."""
+        self._refresh_privileged_helper_status()
 
     def _on_save_clicked(self, button: Gtk.Button):
         """

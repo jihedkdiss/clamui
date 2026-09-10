@@ -697,7 +697,7 @@ def test_something(mock_gi_modules):
 }
 ```
 
-VirusTotal is configured via **Preferences → VirusTotal** (the API key lives in the system keyring), not via settings keys. `DEFAULT_SETTINGS` in `settings_manager.py` defines 34 keys total; see [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) for the full list.
+VirusTotal is configured via **Preferences → VirusTotal** (the API key lives in the system keyring), not via settings keys. See [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) for the full `DEFAULT_SETTINGS` reference.
 
 #### Scan Backend Options
 

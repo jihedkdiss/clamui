@@ -113,14 +113,17 @@ class TestSavePageCreation:
             icon_name="document-save-symbolic",
         )
 
-    def test_create_page_creates_preference_groups(self, mock_gi_modules, save_page):
-        """Test create_page creates preference groups."""
-        adw = mock_gi_modules["adw"]
+    def test_create_page_keeps_helper_in_existing_save_behavior_group(
+        self, mock_gi_modules, save_page
+    ):
+        """The Flatpak helper row extends Save Behavior instead of adding a group."""
+        with (
+            mock.patch("src.ui.preferences.save_page.is_flatpak", return_value=True),
+            mock.patch("src.ui.preferences.save_page.threading.Thread"),
+        ):
+            save_page.create_page()
 
-        save_page.create_page()
-
-        # Should create 2 PreferencesGroups (info and button)
-        assert adw.PreferencesGroup.call_count == 2
+        assert mock_gi_modules["adw"].PreferencesGroup.call_count == 2
 
     def test_create_page_creates_info_rows(self, mock_gi_modules, save_page):
         """Test create_page creates info rows."""
@@ -219,6 +222,151 @@ class TestSavePageCreation:
             save_page.create_page()
 
         assert not any("administrator permission" in s for s in self._subtitles(rows))
+
+    @staticmethod
+    def _helper_status(state, detail=None):
+        """Build helper statuses with stable package metadata for UI tests."""
+        from src.core.privileged_helper import PrivilegedHelperStatus
+
+        return PrivilegedHelperStatus(
+            state=state,
+            package_name="clamui-privileged-helper",
+            version="1.2.3",
+            detail=detail,
+        )
+
+    def _create_flatpak_page(self, save_page):
+        """Create the page without running its asynchronous probe inline."""
+        with (
+            mock.patch("src.ui.preferences.save_page.is_flatpak", return_value=True),
+            mock.patch("src.ui.preferences.save_page.threading.Thread") as thread,
+        ):
+            save_page.create_page()
+
+        return thread
+
+    def test_privileged_helper_starts_checking_probe(self, mock_gi_modules, save_page):
+        """Flatpak creation shows a disabled checking state and starts one daemon."""
+        thread = self._create_flatpak_page(save_page)
+
+        assert save_page._privileged_helper_row is not None
+        save_page._privileged_helper_row.set_subtitle.assert_any_call(
+            "Checking whether the matching host helper is installed…"
+        )
+        save_page._privileged_helper_button.set_sensitive.assert_called_with(False)
+        assert thread.call_count == 1
+        assert thread.return_value.daemon is True
+        thread.return_value.start.assert_called_once()
+
+    def test_privileged_helper_probe_queues_render_on_main_loop(self, mock_gi_modules, save_page):
+        """The worker only queues the widget update through GLib.idle_add."""
+        from src.core.privileged_helper import PrivilegedHelperState
+
+        status = self._helper_status(PrivilegedHelperState.INSTALLABLE)
+        with (
+            mock.patch(
+                "src.ui.preferences.save_page.get_privileged_helper_status",
+                return_value=status,
+            ),
+            mock.patch("src.ui.preferences.save_page.GLib.idle_add") as idle_add,
+            mock.patch.object(save_page, "_render_privileged_helper_status") as render,
+        ):
+            save_page._probe_privileged_helper_status()
+
+        render.assert_not_called()
+        idle_add.assert_called_once_with(render, status)
+
+    def test_native_page_omits_privileged_helper_row(self, mock_gi_modules, save_page):
+        """Native preferences retain their existing Save Behavior rows only."""
+        with (
+            mock.patch("src.ui.preferences.save_page.is_flatpak", return_value=False),
+            mock.patch("src.ui.preferences.save_page.threading.Thread") as thread,
+        ):
+            save_page.create_page()
+
+        assert save_page._privileged_helper_row is None
+        assert save_page._privileged_helper_button is None
+        thread.assert_not_called()
+
+    def test_privileged_helper_renders_installable_state(self, mock_gi_modules, save_page):
+        """An installable host enables the suffix action with a warning state."""
+        from src.core.privileged_helper import PrivilegedHelperState
+
+        self._create_flatpak_page(save_page)
+        save_page._render_privileged_helper_status(
+            self._helper_status(PrivilegedHelperState.INSTALLABLE)
+        )
+
+        save_page._privileged_helper_row.set_subtitle.assert_called_with(
+            "A matching host privileged helper can be installed."
+        )
+        save_page._privileged_helper_icon.add_css_class.assert_called_with("warning")
+        save_page._privileged_helper_button.set_visible.assert_called_with(True)
+        save_page._privileged_helper_button.set_sensitive.assert_called_with(True)
+
+    def test_privileged_helper_renders_installed_state(self, mock_gi_modules, save_page):
+        """An installed host helper has a success state and no install action."""
+        from src.core.privileged_helper import PrivilegedHelperState
+
+        self._create_flatpak_page(save_page)
+        save_page._render_privileged_helper_status(
+            self._helper_status(PrivilegedHelperState.INSTALLED)
+        )
+
+        save_page._privileged_helper_row.set_subtitle.assert_called_with(
+            "Installed: clamui-privileged-helper 1.2.3."
+        )
+        save_page._privileged_helper_icon.add_css_class.assert_called_with("success")
+        save_page._privileged_helper_button.set_visible.assert_called_with(False)
+        save_page._privileged_helper_button.set_sensitive.assert_called_with(False)
+
+    def test_privileged_helper_renders_unsupported_state(self, mock_gi_modules, save_page):
+        """An unsupported host keeps its explanation visible without an action."""
+        from src.core.privileged_helper import PrivilegedHelperState
+
+        self._create_flatpak_page(save_page)
+        save_page._render_privileged_helper_status(
+            self._helper_status(
+                PrivilegedHelperState.UNSUPPORTED,
+                "Automatic installation is unavailable on this host.",
+            )
+        )
+
+        save_page._privileged_helper_row.set_subtitle.assert_called_with(
+            "Automatic installation is unavailable on this host."
+        )
+        save_page._privileged_helper_button.set_visible.assert_called_with(False)
+        save_page._privileged_helper_button.set_sensitive.assert_called_with(False)
+
+    def test_privileged_helper_presents_installer_dialog(self, mock_gi_modules, save_page):
+        """The enabled helper button uses the shared installer presenter."""
+        from src.core.privileged_helper import PrivilegedHelperState
+
+        self._create_flatpak_page(save_page)
+        save_page._render_privileged_helper_status(
+            self._helper_status(PrivilegedHelperState.INSTALLABLE)
+        )
+        with mock.patch(
+            "src.ui.preferences.save_page.present_privileged_helper_dialog"
+        ) as present_dialog:
+            save_page._on_install_privileged_helper_clicked(mock.MagicMock())
+
+        present_dialog.assert_called_once_with(
+            save_page._window, on_installed=save_page._on_privileged_helper_installed
+        )
+
+    def test_privileged_helper_success_refreshes_status(self, mock_gi_modules, save_page):
+        """A successful dialog callback runs a fresh asynchronous status probe."""
+        with (
+            mock.patch("src.ui.preferences.save_page.is_flatpak", return_value=True),
+            mock.patch("src.ui.preferences.save_page.threading.Thread") as thread,
+        ):
+            save_page.create_page()
+            save_page._on_privileged_helper_installed()
+
+        assert thread.call_count == 2
+        assert thread.return_value.daemon is True
+        assert thread.return_value.start.call_count == 2
 
 
 class TestSavePageSaveClicked:

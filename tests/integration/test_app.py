@@ -456,6 +456,150 @@ class TestClamUIAppLifecycle:
         mock_window.set_activity_status.assert_called_once_with(None)
 
 
+class TestClamUIAppPrivilegedHelperPrompt:
+    """Tests for the non-blocking one-per-process startup helper prompt."""
+
+    def test_activation_queues_one_probe_after_presenting_window(self, app):
+        window = mock.MagicMock()
+        app.props = SimpleNamespace(active_window=window)
+        app._first_activation = False
+
+        with (
+            mock.patch.object(app, "_ensure_log_privacy_migration_monitor"),
+            mock.patch("src.app.threading.Thread") as thread_class,
+        ):
+            app.do_activate()
+            app.do_activate()
+
+        window.present.assert_called()
+        thread_class.assert_called_once()
+        target = thread_class.call_args.kwargs["target"]
+        assert target.__self__ is app
+        assert target.__func__ is app._check_privileged_helper_status_background.__func__
+        assert thread_class.call_args.kwargs["args"] == (window,)
+        assert thread_class.call_args.kwargs["daemon"] is True
+
+    def test_installable_status_invokes_presenter_once(self, app):
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = ""
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLABLE, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            assert app._on_privileged_helper_status_checked(window, status) is False
+            assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_called_once_with(
+            window,
+            on_dismissed=app._on_privileged_helper_prompt_dismissed,
+        )
+
+    def test_matching_skip_version_suppresses_installable_prompt(self, app):
+        from src import __version__
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = __version__
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLABLE, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_not_called()
+        assert app._privileged_helper_prompt_presented is False
+
+    def test_prior_version_skip_marker_allows_installable_prompt(self, app):
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = "previous-version"
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLABLE, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_called_once_with(
+            window,
+            on_dismissed=app._on_privileged_helper_prompt_dismissed,
+        )
+
+    def test_dismissal_persists_current_version(self, app):
+        from src import __version__
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = ""
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLABLE, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            app._on_privileged_helper_status_checked(window, status)
+            present_dialog.call_args.kwargs["on_dismissed"]()
+
+        settings_manager.set.assert_called_once_with(
+            "privileged_helper_prompt_skipped_version",
+            __version__,
+        )
+
+    def test_installed_status_does_not_prompt_or_write_empty_skip_marker(self, app):
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = ""
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLED, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_not_called()
+        settings_manager.set.assert_not_called()
+
+    def test_installed_status_clears_stale_skip_marker(self, app):
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = "previous-version"
+        app._settings_manager = settings_manager
+        status = PrivilegedHelperStatus(PrivilegedHelperState.INSTALLED, "helper.deb", "1.0")
+
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_not_called()
+        settings_manager.set.assert_called_once_with(
+            "privileged_helper_prompt_skipped_version",
+            "",
+        )
+
+    def test_non_installable_status_does_not_prompt(self, app):
+        from src.core.privileged_helper import PrivilegedHelperState, PrivilegedHelperStatus
+
+        window = mock.MagicMock()
+        settings_manager = mock.MagicMock()
+        settings_manager.get.return_value = ""
+        app._settings_manager = settings_manager
+        with mock.patch("src.app.present_privileged_helper_dialog") as present_dialog:
+            for state in (
+                PrivilegedHelperState.UNSUPPORTED,
+                PrivilegedHelperState.NOT_APPLICABLE,
+            ):
+                status = PrivilegedHelperStatus(state, "helper.deb", "1.0")
+                assert app._on_privileged_helper_status_checked(window, status) is False
+
+        present_dialog.assert_not_called()
+
+
 class TestClamUIAppQuickScanProfile:
     """Tests for Quick Scan profile retrieval and application."""
 

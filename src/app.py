@@ -29,6 +29,7 @@ Example:
 
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -48,12 +49,18 @@ from .core.clamav_config import (
 from .core.clamav_detection import resolve_clamd_conf_path
 from .core.i18n import _, ngettext
 from .core.notification_manager import NotificationManager
+from .core.privileged_helper import (
+    PrivilegedHelperState,
+    PrivilegedHelperStatus,
+    get_privileged_helper_status,
+)
 from .core.settings_manager import SettingsManager
 from .notification_dispatcher import NotificationDispatcher
 from .profiles.models import ScanProfile
 from .profiles.profile_manager import ProfileManager
 from .tray_integration import TrayIntegration
 from .ui.compat import open_paths_dialog, present_about_dialog
+from .ui.privileged_helper_dialog import present_privileged_helper_dialog
 from .ui.window import MainWindow
 from .view_coordinator import ViewCoordinator
 
@@ -63,6 +70,7 @@ LOG_PRIVACY_BANNER_DELAY_SECONDS = 1.0
 LOG_PRIVACY_BANNER_MIN_VISIBLE_SECONDS = 5.0
 LOG_PRIVACY_BANNER_POLL_INTERVAL_MS = 200
 CLAMD_SIZE_LIMIT_MIGRATION_KEY = "clamd_size_limit_unit_migration_done"
+PRIVILEGED_HELPER_PROMPT_SKIPPED_VERSION_KEY = "privileged_helper_prompt_skipped_version"
 
 
 class ClamUIApp(Adw.Application):
@@ -126,6 +134,10 @@ class ClamUIApp(Adw.Application):
 
         # Track first activation for start-minimized functionality
         self._first_activation = True
+
+        # Probe the Flatpak host helper after the first presented main window.
+        self._privileged_helper_probe_queued = False
+        self._privileged_helper_prompt_presented = False
 
         # Initial scan paths from CLI
         self._initial_scan_paths: list[str] = []
@@ -333,6 +345,14 @@ class ClamUIApp(Adw.Application):
             self._current_view = "scan"
 
         win.present()
+
+        if not self._privileged_helper_probe_queued:
+            self._privileged_helper_probe_queued = True
+            threading.Thread(
+                target=self._check_privileged_helper_status_background,
+                args=(win,),
+                daemon=True,
+            ).start()
         logger.debug("do_activate completed in %.1f ms", (time.monotonic() - t0) * 1000)
         self._ensure_log_privacy_migration_monitor()
 
@@ -353,6 +373,50 @@ class ClamUIApp(Adw.Application):
         if self._startup_log_manager is None:
             self._startup_log_manager = self.log_manager
         return self._startup_log_manager
+
+    def _check_privileged_helper_status_background(self, window: MainWindow) -> None:
+        """Check host-helper availability without delaying activation."""
+        try:
+            status = get_privileged_helper_status()
+        except Exception:
+            logger.exception("Failed to check privileged helper status")
+            return
+        GLib.idle_add(self._on_privileged_helper_status_checked, window, status)
+
+    def _on_privileged_helper_prompt_dismissed(self) -> None:
+        """Remember that this version's optional helper prompt was dismissed."""
+        self._settings_manager.set(PRIVILEGED_HELPER_PROMPT_SKIPPED_VERSION_KEY, __version__)
+
+    def _on_privileged_helper_status_checked(
+        self, window: MainWindow, status: PrivilegedHelperStatus
+    ) -> bool:
+        """Present the one-per-process helper prompt when installation is supported."""
+        if status.state is PrivilegedHelperState.INSTALLED:
+            skipped_version = self._settings_manager.get(
+                PRIVILEGED_HELPER_PROMPT_SKIPPED_VERSION_KEY, ""
+            )
+            if skipped_version:
+                self._settings_manager.set(PRIVILEGED_HELPER_PROMPT_SKIPPED_VERSION_KEY, "")
+            return False
+
+        if (
+            self._privileged_helper_prompt_presented
+            or status.state is not PrivilegedHelperState.INSTALLABLE
+        ):
+            return False
+
+        if (
+            self._settings_manager.get(PRIVILEGED_HELPER_PROMPT_SKIPPED_VERSION_KEY, "")
+            == __version__
+        ):
+            return False
+
+        self._privileged_helper_prompt_presented = True
+        present_privileged_helper_dialog(
+            window,
+            on_dismissed=self._on_privileged_helper_prompt_dismissed,
+        )
+        return False
 
     def _format_log_privacy_status(self, processed_files: int, total_files: int) -> str:
         """Build the startup status text for persisted-log privacy migration."""

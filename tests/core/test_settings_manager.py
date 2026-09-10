@@ -618,6 +618,10 @@ class TestSettingsManagerDefaults:
         assert "freshclam_conf_path" in SettingsManager.DEFAULT_SETTINGS
         assert SettingsManager.DEFAULT_SETTINGS["freshclam_conf_path"] == ""
 
+    def test_default_settings_has_privileged_helper_prompt_skip_version(self):
+        """Test that the helper prompt skip marker defaults to no skipped version."""
+        assert SettingsManager.DEFAULT_SETTINGS["privileged_helper_prompt_skipped_version"] == ""
+
     def test_default_settings_is_not_modified(self):
         """Test that DEFAULT_SETTINGS is not modified by operations."""
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -114,13 +114,19 @@ Or find "ClamUI" in your application menu.
 
 Database, Scanner, and On-Access settings always target the real host `/etc/clamav` configuration, never a sandbox surrogate. Saving them requires the matching trusted host `clamui-apply-preferences` helper at `/usr/bin/clamui-apply-preferences` and its polkit policy.
 
-`sudo flatpak run ... install-privileged-helper` cannot install host files: the sandbox `/usr` is not the host `/usr`. Debian and Ubuntu users must install the version-matched `clamui-privileged-helper_<version>_all.deb` release asset (the same version as the Flatpak) on the host:
+On supported Debian-family hosts, ClamUI checks for that helper when it launches. If it is missing, ClamUI prompts you to install it. The installer downloads the exact version-matched official `clamui-privileged-helper_<version>_all.deb` release asset, validates the GitHub release metadata and the asset's SHA-256 checksum, verifies the Debian package identity, and independently verifies its dpkg-sig v4 GPG signature against ClamUI's bundled canonical signing key and pinned fingerprint (`037273A518BE90BA6EA27B3CDEF2A3E473DE1E26`). Only then does it ask for administrator authorization through polkit to install it on the host.
+
+Choosing **Not Now** remembers that dismissal only for the current ClamUI version, preventing repeated automatic startup prompts for that version. It does not disable or cache the helper-status check: **Preferences > Save** continues to show the helper's current status and its installation action. A later ClamUI version may prompt again for its matching helper.
+
+You can also review the helper status or install it later from **Preferences > Save**. This action is available only on supported Debian-family hosts; the project currently provides no RPM or pacman helper artifact. It installs only the helper, its Python modules, and the polkit policy — not the full native app.
+
+If automatic installation is unavailable or you prefer to install it yourself, download the version-matched release asset (the same version as the Flatpak) and use the manual fallback:
 
 ```bash
 sudo apt install ./clamui-privileged-helper_<version>_all.deb
 ```
 
-This installs only the helper, its Python modules, and the polkit policy — not the full native app. Other distributions need a matching distribution-provided helper; the project currently provides no RPM or pacman artifact. If the helper is missing, these saves fail without changing host configuration. Exclusions remain sandbox-local ClamUI application settings.
+`sudo flatpak run ... install-privileged-helper` cannot install host files: the sandbox `/usr` is not the host `/usr`. If the helper is absent, unavailable, or fails validation or installation, ClamUI fails closed: system-setting saves do not change host configuration. Exclusions remain sandbox-local ClamUI application settings.
 
 > **Troubleshooting**: If you encounter issues with the Flatpak installation,
 > see [Flatpak-Specific Issues](./TROUBLESHOOTING.md#flatpak-specific-issues) in the troubleshooting guide.

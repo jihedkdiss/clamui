@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ClamUI 0.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/linx-systems/clamui/issues\n"
-"POT-Creation-Date: 2026-08-24 00:50+0200\n"
+"POT-Creation-Date: 2026-09-10 19:42+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,26 +18,26 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/app.py:360
+#: src/app.py:424
 msgid "Updating stored logs for privacy"
 msgstr ""
 
-#: src/app.py:363
+#: src/app.py:427
 #, python-brace-format
 msgid "Updating stored log for privacy ({processed}/{total})"
 msgid_plural "Updating stored logs for privacy ({processed}/{total})"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/app.py:705
+#: src/app.py:769
 msgid "Select File or Folder"
 msgstr ""
 
-#: src/app.py:894
+#: src/app.py:958
 msgid "A scan is already running — the new scan request was ignored"
 msgstr ""
 
-#: src/app.py:915
+#: src/app.py:979
 #, python-brace-format
 msgid ""
 "VirusTotal scans one file per request — {count} additional selection was "
@@ -1934,6 +1934,101 @@ msgstr ""
 msgid "Unknown Device"
 msgstr ""
 
+#: src/core/privileged_helper.py:272
+msgid ""
+"The host helper was found, but its installed package version could not be "
+"verified."
+msgstr ""
+
+#: src/core/privileged_helper.py:279
+msgid ""
+"The privileged helper is only installed automatically for Flatpak ClamUI."
+msgstr ""
+
+#: src/core/privileged_helper.py:285
+msgid ""
+"Automatic privileged-helper installation is currently supported only on "
+"Debian-family hosts."
+msgstr ""
+
+#: src/core/privileged_helper.py:754
+msgid "The privileged helper is already installed."
+msgstr ""
+
+#: src/core/privileged_helper.py:759
+msgid "The privileged helper cannot be installed automatically here."
+msgstr ""
+
+#: src/core/privileged_helper.py:767
+msgid "Timed out while checking the ClamUI release."
+msgstr ""
+
+#: src/core/privileged_helper.py:772
+msgid ""
+"Could not contact GitHub to check the ClamUI release. Check your connection "
+"and try again."
+msgstr ""
+
+#: src/core/privileged_helper.py:776
+msgid "The matching ClamUI helper release could not be verified."
+msgstr ""
+
+#: src/core/privileged_helper.py:786
+msgid "Timed out while downloading the privileged helper. Try again."
+msgstr ""
+
+#: src/core/privileged_helper.py:791
+msgid ""
+"Could not download the privileged helper. Check your connection and try "
+"again."
+msgstr ""
+
+#: src/core/privileged_helper.py:794
+msgid "The downloaded privileged helper could not be verified."
+msgstr ""
+
+#: src/core/privileged_helper.py:800
+msgid "The downloaded privileged helper has an unexpected package identity."
+msgstr ""
+
+#: src/core/privileged_helper.py:805
+msgid ""
+"The downloaded privileged helper does not have a valid ClamUI signature."
+msgstr ""
+
+#: src/core/privileged_helper.py:811
+msgid "Authorization was cancelled. The privileged helper was not installed."
+msgstr ""
+
+#: src/core/privileged_helper.py:817
+msgid ""
+"The privileged-helper installation failed. Try again or install it manually."
+msgstr ""
+
+#: src/core/privileged_helper.py:825
+msgid ""
+"The privileged helper was installed but is still unavailable. Restart ClamUI "
+"and try again."
+msgstr ""
+
+#: src/core/privileged_helper.py:829
+msgid "The privileged helper was installed successfully."
+msgstr ""
+
+#: src/core/privileged_helper.py:834
+msgid ""
+"Timed out while verifying or installing the privileged helper. Try again."
+msgstr ""
+
+#: src/core/privileged_helper.py:839
+msgid ""
+"Could not run the host package-management tools. Install the helper manually."
+msgstr ""
+
+#: src/core/privileged_helper.py:850
+msgid "Privileged-helper installation is already in progress."
+msgstr ""
+
 #: src/core/notification_manager.py:79 src/ui/scan_results_dialog.py:187
 msgid "Scan Complete"
 msgstr ""
@@ -3274,7 +3369,7 @@ msgstr ""
 msgid "Could not open folder: {error}"
 msgstr ""
 
-#: src/ui/preferences/base.py:687 src/ui/preferences/save_page.py:179
+#: src/ui/preferences/base.py:687 src/ui/preferences/save_page.py:192
 #: src/ui/preferences/scanner_page.py:625
 msgid "OK"
 msgstr ""
@@ -4194,60 +4289,89 @@ msgstr ""
 msgid "Exclude root (UID 0) from On-Access scanning"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:201 src/ui/preferences/save_page.py:271
+#: src/ui/preferences/save_page.py:214 src/ui/preferences/save_page.py:288
 msgid "Save & Apply"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:207
+#: src/ui/preferences/save_page.py:220
 msgid "Save Behavior"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:211
+#: src/ui/preferences/save_page.py:224
 msgid "Auto-Saved"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:212
+#: src/ui/preferences/save_page.py:225
 msgid "Scan Backend, Exclusions"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:224
+#: src/ui/preferences/save_page.py:241
 msgid "Manual Save Required"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:229
+#: src/ui/preferences/save_page.py:246
 msgid ""
 "Database Updates, Scanner, On-Access, Scheduled Scans. A matching host "
 "privileged helper is required; authorization occurs only when the helper is "
 "available."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:238
+#: src/ui/preferences/save_page.py:255
 msgid "Database Updates, Scanner, On-Access, Scheduled Scans."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:245
+#: src/ui/preferences/save_page.py:262
 msgid ""
 "Database Updates, Scanner, On-Access, Scheduled Scans. When needed, you will "
 "be asked for administrator permission once."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:261
+#: src/ui/preferences/save_page.py:278
 msgid "Apply Configuration"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:265
+#: src/ui/preferences/save_page.py:282
 msgid "Save Configuration"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:266
+#: src/ui/preferences/save_page.py:283
 msgid "Apply all pending changes at once."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:312 src/ui/preferences/save_page.py:342
+#: src/ui/preferences/save_page.py:304
+msgid "Privileged Helper"
+msgstr ""
+
+#: src/ui/preferences/save_page.py:306
+msgid "Checking whether the matching host helper is installed…"
+msgstr ""
+
+#: src/ui/preferences/save_page.py:317 src/ui/privileged_helper_dialog.py:108
+msgid "Install Helper"
+msgstr ""
+
+#: src/ui/preferences/save_page.py:354
+#, python-brace-format
+msgid "Installed: {package} {version}."
+msgstr ""
+
+#: src/ui/preferences/save_page.py:368
+msgid "A matching host privileged helper can be installed."
+msgstr ""
+
+#: src/ui/preferences/save_page.py:380
+msgid "Automatic installation is unavailable on this host."
+msgstr ""
+
+#: src/ui/preferences/save_page.py:384
+msgid "No host privileged helper is required."
+msgstr ""
+
+#: src/ui/preferences/save_page.py:434 src/ui/preferences/save_page.py:464
 msgid "Configuration Error"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:314
+#: src/ui/preferences/save_page.py:436
 msgid ""
 "Cannot save freshclam settings: Configuration failed to load.\n"
 "\n"
@@ -4259,11 +4383,11 @@ msgid ""
 "Check the application logs for details."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:333 src/ui/preferences/save_page.py:361
+#: src/ui/preferences/save_page.py:455 src/ui/preferences/save_page.py:483
 msgid "Validation Error"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:344
+#: src/ui/preferences/save_page.py:466
 #, python-brace-format
 msgid ""
 "Cannot save clamd settings: Configuration failed to load.\n"
@@ -4271,23 +4395,23 @@ msgid ""
 "Check that {path} exists and is readable."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:499
+#: src/ui/preferences/save_page.py:621
 msgid "ClamAV configuration files"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:518
+#: src/ui/preferences/save_page.py:640
 msgid "Failed to save scheduled scan settings"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:519
+#: src/ui/preferences/save_page.py:641
 msgid "Scheduled scan preferences"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:548
+#: src/ui/preferences/save_page.py:670
 msgid "Configuration Saved with Warning"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:549
+#: src/ui/preferences/save_page.py:671
 #, python-brace-format
 msgid ""
 "Configuration saved with a warning:\n"
@@ -4295,30 +4419,30 @@ msgid ""
 "{warning}"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:556
+#: src/ui/preferences/save_page.py:678
 msgid "Configuration Saved"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:558
+#: src/ui/preferences/save_page.py:680
 msgid ""
 "Configuration saved. Active ClamAV services were restarted where needed."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:564
+#: src/ui/preferences/save_page.py:686
 msgid "No Changes to Apply"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:566
+#: src/ui/preferences/save_page.py:688
 msgid ""
 "No configuration changes were detected, so nothing was saved. Open a "
 "settings page and modify a value before saving."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:576
+#: src/ui/preferences/save_page.py:698
 msgid "Changes Partially Applied"
 msgstr ""
 
-#: src/ui/preferences/save_page.py:578
+#: src/ui/preferences/save_page.py:700
 #, python-brace-format
 msgid ""
 "The following changes were saved before another change failed:\n"
@@ -4329,7 +4453,7 @@ msgid ""
 "Review your settings and save again."
 msgstr ""
 
-#: src/ui/preferences/save_page.py:588
+#: src/ui/preferences/save_page.py:710
 msgid "Save Failed"
 msgstr ""
 
@@ -4817,6 +4941,55 @@ msgstr ""
 #: src/ui/preferences/window.py:757
 #, python-brace-format
 msgid "Failed to load {file}: {error}"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:47
+msgid "Install Privileged Helper"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:69
+msgid "Privileged Helper Required"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:76
+msgid ""
+"ClamUI needs its matching privileged helper to save system configuration. It "
+"will download the exact release helper, verify the download, then ask once "
+"for administrator authorization."
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:93
+msgid "Ready to install the helper."
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:104
+msgid "Not Now"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:140
+msgid "Installing helper…"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:182
+msgid "Helper installed successfully."
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:184
+msgid "Close"
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:194
+msgid ""
+"An unexpected error occurred while installing the helper. Please try again."
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:199
+msgid "The helper could not be installed. Please try again."
+msgstr ""
+
+#: src/ui/privileged_helper_dialog.py:200
+#, python-brace-format
+msgid "Installation failed: {message}"
 msgstr ""
 
 #: src/ui/profile_dialogs.py:102
@@ -6056,7 +6229,7 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
-#: src/ui/tray_service.py:495
+#: src/ui/tray_service.py:492
 #, python-brace-format
 msgid "ClamUI - {status}"
 msgstr ""

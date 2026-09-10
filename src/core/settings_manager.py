@@ -152,6 +152,7 @@ class SettingsManager:
         "clamd_conf_path": "",  # Empty = auto-detect
         "freshclam_conf_path": "",  # Empty = auto-detect
         "clamd_size_limit_unit_migration_done": False,
+        "privileged_helper_prompt_skipped_version": "",
         # VirusTotal settings
         "virustotal_api_key": None,  # Fallback storage if keyring unavailable (gated by
         # allow_plaintext_api_key_fallback — default False, key is only written here
